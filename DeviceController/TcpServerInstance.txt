@@ -1,0 +1,71 @@
+using System;
+using System.Text;
+using System.Net.Sockets;
+using System.Net;
+
+namespace DeviceController
+{
+    class TcpServerInstance
+    {
+        public static TcpClient tcpClient;
+        private static TcpListener tcpListener;
+        private static string ipAddressString;
+
+        public TcpServerInstance()
+        {
+            FidLocalMachineIPAddress();
+        }
+
+        private static void PerformActionsBasedOnDataReceivedFromClient()
+        {
+            while (tcpClient.Connected)
+            {
+                try
+                {
+                    const int bytesize = 1024 * 1024;
+                    byte[] buffer = new byte[bytesize];
+                    string receivedStream = tcpClient.GetStream().Read(buffer, 0, bytesize).ToString();
+                    var data = ASCIIEncoding.ASCII.GetString(buffer);
+                    if (data.ToUpper().Contains("SLP2"))
+                    {
+                        Console.WriteLine("PC is going to sleep mode..");
+                        //DoSomething(); 
+                    }
+                }
+                catch (Exception exception)
+                {
+                    tcpClient.Dispose();
+                    tcpClient.Close();
+                }
+            }
+        }
+
+        private void StartListening(string ipAddress, int portNumber)
+        {
+            IPEndPoint endPoint = new IPEndPoint(IPAddress.Parse(ipAddress), portNumber);
+            tcpListener = new TcpListener(endPoint);
+            tcpListener.Start();
+            Console.WriteLine("Started listening requests at: {0}:{1}", endPoint.Address, endPoint.Port);
+            tcpClient = tcpListener.AcceptTcpClient();
+            Console.WriteLine("Connected to client!");
+        }
+
+        private void FidLocalMachineIPAddress()
+        {
+            IPAddress[] localIPAddress = Dns.GetHostAddresses(Dns.GetHostName());
+            foreach (IPAddress address in localIPAddress)
+            {
+                if (address.AddressFamily == AddressFamily.InterNetwork)
+                {
+                    ipAddressString = address.ToString();
+                }
+            }
+        }
+
+        public void StartTcpServer(int portNumber)
+        {
+            StartListening(ipAddressString, portNumber);
+            PerformActionsBasedOnDataReceivedFromClient();
+        }
+    }
+}
